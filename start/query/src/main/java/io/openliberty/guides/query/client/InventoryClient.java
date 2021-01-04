@@ -2,6 +2,7 @@ package io.openliberty.guides.query.client;
 
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CompletionStage;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -23,6 +24,6 @@ public interface InventoryClient extends AutoCloseable {
     @GET
     @Path("/systems/{hostname}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Properties getSystem(@PathParam("hostname") String hostname);
+    public CompletionStage<Properties> getSystem(@PathParam("hostname") String hostname);
 
 }

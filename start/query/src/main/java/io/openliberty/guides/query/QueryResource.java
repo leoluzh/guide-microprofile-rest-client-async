@@ -3,8 +3,13 @@ package io.openliberty.guides.query;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.HashMap;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -29,13 +34,33 @@ public class QueryResource {
     @Path("/systemLoad")
     @Produces(MediaType.APPLICATION_JSON)
     public Map<String, Properties> systemLoad() {
+    	
         List<String> systems = inventoryClient.getSystems();
+        CountDownLatch remainingSystems = new CountDownLatch(systems.size());
         Holder systemLoads = new Holder();
 
         for (String system : systems) {
-            Properties p = inventoryClient.getSystem(system);
+        	
+            inventoryClient.getSystem(system)
+            	.thenAcceptAsync( p -> {
+            		if( Objects.nonNull( p ) ) {
+            			systemLoads.updateValues( p );
+            		}
+            		remainingSystems.countDown();
+            	})
+            	.exceptionally( ex -> {
+            		ex.printStackTrace();
+            		remainingSystems.countDown();
+            		return null;
+            	});
             
-            systemLoads.updateValues(p);
+        }
+        
+        //Wait for all remaining systems to be checked
+        try {
+        	remainingSystems.await( 30 , TimeUnit.SECONDS );
+        }catch( InterruptedException ex ) {
+        	ex.printStackTrace();
         }
 
         return systemLoads.getValues();
